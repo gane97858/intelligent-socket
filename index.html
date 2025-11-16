@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Multi-Appliance Energy Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .gauge {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: conic-gradient(#3b82f6 0deg, #e5e7eb 0deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    box-shadow: 0 0 20px rgba(59,130,246,0.3);
+    transition: background 0.3s linear;
+  }
+  .gauge span {
+    position: absolute;
+    color: #111827;
+  }
+</style>
+</head>
+
+<body class="bg-gray-50 font-sans">
+<div class="flex h-screen">
+  <div class="flex-1 p-6 overflow-y-auto">
+    <h1 class="text-3xl font-bold text-blue-700 mb-4">
+      ⚡ AI Multi-Appliance Energy Dashboard
+    </h1>
+
+    <!-- APPLIANCE SELECTION -->
+    <div class="bg-white p-4 rounded-2xl shadow mb-6 flex flex-wrap items-center gap-3">
+      <div>
+        <label class="block font-semibold text-gray-700">Select Appliance</label>
+        <select id="applianceSelect" class="border p-2 rounded w-48">
+          <option value="Refrigerator">Refrigerator</option>
+          <option value="Washing Machine">Washing Machine</option>
+          <option value="Heater">Heater</option>
+          <option value="Water Pump">Water Pump</option>
+          <option value="Custom">Custom</option>
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold text-gray-700">Rated Power (W)</label>
+        <input id="ratedPower" type="number" value="1000"
+          class="border rounded p-2 w-32" />
+      </div>
+      <div>
+        <label class="block font-semibold text-gray-700">Rated Current (A)</label>
+        <input id="ratedCurrent" type="number" value="5"
+          class="border rounded p-2 w-32" />
+      </div>
+      <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 self-end">Apply</button>
+    </div>
+
+    <!-- GAUGES -->
+    <div class="bg-white p-6 rounded-2xl shadow mb-6 flex justify-around items-center">
+      <div class="text-center">
+        <div id="voltGauge" class="gauge"><span id="voltVal">230V</span></div>
+        <p class="mt-2 text-blue-600 font-semibold">Voltage</p>
+      </div>
+      <div class="text-center">
+        <div id="currGauge" class="gauge"><span id="currVal">5A</span></div>
+        <p class="mt-2 text-green-600 font-semibold">Current</p>
+      </div>
+      <div class="text-center">
+        <div id="powGauge" class="gauge"><span id="powVal">1150W</span></div>
+        <p class="mt-2 text-orange-600 font-semibold">Power</p>
+      </div>
+      <div class="text-center">
+        <div id="earthGauge" class="gauge"><span id="earthVal">0.02A</span></div>
+        <p class="mt-2 text-red-500 font-semibold">Earth Leakage</p>
+      </div>
+    </div>
+
+    <!-- AI INSIGHT -->
+    <div class="bg-white p-5 rounded-2xl shadow mb-6">
+      <h2 class="text-xl font-semibold mb-3">🧠 AI Insight</h2>
+      <p class="text-gray-800 text-lg font-medium" id="insightText">
+        System stable. Monitoring current appliance performance.
+      </p>
+    </div>
+
+    <!-- VOLTAGE GRAPH -->
+    <div class="bg-white p-5 rounded-2xl shadow mb-6">
+      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <h2 class="text-lg font-semibold text-blue-600">Voltage Trend</h2>
+        <div class="flex gap-2 items-center flex-wrap">
+          <input type="datetime-local" id="voltStart" class="border rounded p-1 text-sm">
+          <input type="datetime-local" id="voltEnd" class="border rounded p-1 text-sm">
+          <button id="voltView" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">View Range</button>
+          <button id="voltReset" class="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 text-sm">Reset</button>
+          <button id="pauseBtn" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">⏸ Pause</button>
+        </div>
+      </div>
+      <canvas id="voltageChart" height="100"></canvas>
+    </div>
+
+    <!-- CURRENT GRAPH -->
+    <div class="bg-white p-5 rounded-2xl shadow mb-6">
+      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <h2 class="text-lg font-semibold text-green-600">Current & Earth Leakage</h2>
+        <div class="flex gap-2 items-center flex-wrap">
+          <input type="datetime-local" id="currStart" class="border rounded p-1 text-sm">
+          <input type="datetime-local" id="currEnd" class="border rounded p-1 text-sm">
+          <button id="currView" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm">View Range</button>
+          <button id="currReset" class="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 text-sm">Reset</button>
+        </div>
+      </div>
+      <canvas id="currentChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- SIDEBAR CHAT -->
+  <div class="w-96 bg-white border-l border-gray-200 p-4 shadow-lg flex flex-col">
+    <h2 class="text-xl font-semibold text-blue-700 mb-4">💬 AI Assistant</h2>
+    <div id="chatWindow" class="flex-1 overflow-y-auto mb-4 space-y-3">
+      <div class="p-2 bg-blue-50 rounded">
+        <b>AI:</b> Hi! Select an appliance to start tracking.
+      </div>
+    </div>
+    <div class="flex space-x-2">
+      <input id="prompt" class="flex-1 border rounded p-2" placeholder="Ask something..." />
+      <button id="sendBtn" class="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const voltCtx = document.getElementById('voltageChart').getContext('2d');
+  const currCtx = document.getElementById('currentChart').getContext('2d');
+
+  const voltageChart = new Chart(voltCtx, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Voltage (V)', data: [], borderColor: 'blue', fill: false, tension: 0.3 }] },
+    options: { animation: false }
+  });
+
+  const currentChart = new Chart(currCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'Current (A)', data: [], borderColor: 'green', fill: false, tension: 0.3 },
+        { label: 'Earth Leakage (A)', data: [], borderColor: 'red', borderDash: [5,5], fill: false, tension: 0.3 }
+      ]
+    },
+    options: { animation: false }
+  });
+
+  let paused = false;
+  document.getElementById('pauseBtn').onclick = () => {
+    paused = !paused;
+    document.getElementById('pauseBtn').innerText = paused ? '▶ Resume' : '⏸ Pause';
+  };
+
+  const voltHistory = [];
+  const currHistory = [];
+
+  function updateGauge(id, value, max, color) {
+    const gauge = document.getElementById(id);
+    const deg = (value / max) * 360;
+    gauge.style.background = `conic-gradient(${color} ${deg}deg, #e5e7eb ${deg}deg)`;
+  }
+
+  let appliance = "Refrigerator";
+  let ratedPower = 1000;
+  let ratedCurrent = 5;
+
+  document.getElementById("applyBtn").onclick = () => {
+    appliance = document.getElementById("applianceSelect").value;
+    ratedPower = parseFloat(document.getElementById("ratedPower").value);
+    ratedCurrent = parseFloat(document.getElementById("ratedCurrent").value);
+    document.getElementById("insightText").textContent =
+      `${appliance} selected. Monitoring performance vs rated specs.`;
+  };
+
+  function simulateData() {
+    if (paused) return;
+    const now = Date.now();
+    const voltage = (228 + Math.random() * 4).toFixed(1);
+    const current = (ratedCurrent * (0.8 + Math.random() * 0.4)).toFixed(2);
+    const earth = (Math.random() * 0.06).toFixed(3);
+    const power = (voltage * current / 2).toFixed(0);
+
+    document.getElementById('voltVal').innerText = `${voltage}V`;
+    document.getElementById('currVal').innerText = `${current}A`;
+    document.getElementById('powVal').innerText = `${power}W`;
+    document.getElementById('earthVal').innerText = `${earth}A`;
+
+    updateGauge('voltGauge', voltage, 240, '#3b82f6');
+    updateGauge('currGauge', current, ratedCurrent * 1.5, '#22c55e');
+    updateGauge('powGauge', power, ratedPower * 1.5, '#f97316');
+    updateGauge('earthGauge', earth * 1000, 100, '#ef4444');
+
+    const insightEl = document.getElementById("insightText");
+    if (earth > 0.05) {
+      insightEl.innerHTML = `⚠ Leakage detected on <b>${appliance}</b>. Check wiring!`;
+    } else if (current > ratedCurrent * 1.1) {
+      insightEl.innerHTML = `⚠ Overcurrent in <b>${appliance}</b>. Load exceeds rated limit.`;
+    } else if (current < ratedCurrent * 0.5) {
+      insightEl.innerHTML = `${appliance} underloaded — operating below normal range.`;
+    } else {
+      insightEl.innerHTML = `${appliance} running efficiently.`;
+    }
+
+    voltHistory.push({ time: now, voltage });
+    currHistory.push({ time: now, current, earth });
+
+    updateCharts(voltHistory, currHistory);
+  }
+
+  function updateCharts(vh, ch) {
+    voltageChart.data.labels = vh.map(d => new Date(d.time).toLocaleTimeString());
+    voltageChart.data.datasets[0].data = vh.map(d => d.voltage);
+
+    currentChart.data.labels = ch.map(d => new Date(d.time).toLocaleTimeString());
+    currentChart.data.datasets[0].data = ch.map(d => d.current);
+    currentChart.data.datasets[1].data = ch.map(d => d.earth);
+
+    voltageChart.update();
+    currentChart.update();
+  }
+
+  // Custom Time Range Filtering
+  document.getElementById('voltView').onclick = () => {
+    const s = new Date(document.getElementById('voltStart').value).getTime();
+    const e = new Date(document.getElementById('voltEnd').value).getTime();
+    const filtered = voltHistory.filter(d => d.time >= s && d.time <= e);
+    updateCharts(filtered, currHistory);
+  };
+
+  document.getElementById('currView').onclick = () => {
+    const s = new Date(document.getElementById('currStart').value).getTime();
+    const e = new Date(document.getElementById('currEnd').value).getTime();
+    const filtered = currHistory.filter(d => d.time >= s && d.time <= e);
+    updateCharts(voltHistory, filtered);
+  };
+
+  document.getElementById('voltReset').onclick = () => updateCharts(voltHistory, currHistory);
+  document.getElementById('currReset').onclick = () => updateCharts(voltHistory, currHistory);
+
+  setInterval(simulateData, 1500);
+</script>
+</body>
+</html>
